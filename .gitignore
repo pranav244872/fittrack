@@ -36,3 +36,4 @@ build/
 postgres_data/
 *.jar
 *.class
+setup-deploy.sh
