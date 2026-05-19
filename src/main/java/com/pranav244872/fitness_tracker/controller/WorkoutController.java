@@ -1,5 +1,6 @@
 package com.pranav244872.fitness_tracker.controller;
 
+import com.pranav244872.fitness_tracker.dto.WorkoutResponse;
 import com.pranav244872.fitness_tracker.model.Workout;
 import com.pranav244872.fitness_tracker.service.WorkoutService;
 import org.springframework.http.HttpStatus;
@@ -19,18 +20,18 @@ public class WorkoutController {
     }
 
     @PostMapping("/categories/{categoryId}/workouts")
-    public ResponseEntity<Workout> createWorkout(@PathVariable Long categoryId, @RequestBody Workout workout) {
-        Workout created = workoutService.createWorkout(categoryId, workout);
+    public ResponseEntity<WorkoutResponse> createWorkout(@PathVariable Long categoryId, @RequestBody Workout workout) {
+        WorkoutResponse created = workoutService.createWorkout(categoryId, workout);
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @GetMapping("/categories/{categoryId}/workouts")
-    public ResponseEntity<List<Workout>> getWorkoutsByCategory(@PathVariable Long categoryId) {
+    public ResponseEntity<List<WorkoutResponse>> getWorkoutsByCategory(@PathVariable Long categoryId) {
         return ResponseEntity.ok(workoutService.getWorkoutsByCategoryId(categoryId));
     }
 
     @GetMapping("/workouts/{id}")
-    public ResponseEntity<Workout> getWorkoutById(@PathVariable Long id) {
+    public ResponseEntity<WorkoutResponse> getWorkoutById(@PathVariable Long id) {
         return ResponseEntity.ok(workoutService.getWorkoutById(id));
     }
 

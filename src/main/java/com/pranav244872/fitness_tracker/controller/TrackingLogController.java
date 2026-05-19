@@ -1,9 +1,9 @@
 package com.pranav244872.fitness_tracker.controller;
 
 import com.pranav244872.fitness_tracker.dto.MeditationLogRequest;
+import com.pranav244872.fitness_tracker.dto.MeditationLogResponse;
 import com.pranav244872.fitness_tracker.dto.WorkoutLogRequest;
-import com.pranav244872.fitness_tracker.model.MeditationLog;
-import com.pranav244872.fitness_tracker.model.WorkoutLog;
+import com.pranav244872.fitness_tracker.dto.WorkoutLogResponse;
 import com.pranav244872.fitness_tracker.service.MeditationLogService;
 import com.pranav244872.fitness_tracker.service.WorkoutLogService;
 import org.springframework.http.HttpStatus;
@@ -24,32 +24,28 @@ public class TrackingLogController {
         this.meditationLogService = meditationLogService;
     }
 
-    // Log a completed workout routine
-    // Expects JSON body: { "categoryId": 1, "durationMinutes": 45 }
     @PostMapping("/workouts")
-    public ResponseEntity<WorkoutLog> logWorkout(@RequestBody WorkoutLogRequest request) {
-        WorkoutLog createdLog = workoutLogService.logWorkout(
-            request.categoryId(), 
+    public ResponseEntity<WorkoutLogResponse> logWorkout(@RequestBody WorkoutLogRequest request) {
+        WorkoutLogResponse createdLog = workoutLogService.logWorkout(
+            request.categoryId(),
             request.durationMinutes()
         );
         return new ResponseEntity<>(createdLog, HttpStatus.CREATED);
     }
 
     @GetMapping("/workouts")
-    public ResponseEntity<List<WorkoutLog>> getAllWorkoutLogs() {
+    public ResponseEntity<List<WorkoutLogResponse>> getAllWorkoutLogs() {
         return ResponseEntity.ok(workoutLogService.getAllWorkoutLogs());
     }
 
-    // Log a meditation session
-    // Expects JSON body: { "durationMinutes": 15 }
     @PostMapping("/meditation")
-    public ResponseEntity<MeditationLog> logMeditation(@RequestBody MeditationLogRequest request) {
-        MeditationLog createdLog = meditationLogService.logMeditation(request.durationMinutes());
+    public ResponseEntity<MeditationLogResponse> logMeditation(@RequestBody MeditationLogRequest request) {
+        MeditationLogResponse createdLog = meditationLogService.logMeditation(request.durationMinutes());
         return new ResponseEntity<>(createdLog, HttpStatus.CREATED);
     }
 
     @GetMapping("/meditation")
-    public ResponseEntity<List<MeditationLog>> getAllMeditationLogs() {
+    public ResponseEntity<List<MeditationLogResponse>> getAllMeditationLogs() {
         return ResponseEntity.ok(meditationLogService.getAllMeditationLogs());
     }
 }

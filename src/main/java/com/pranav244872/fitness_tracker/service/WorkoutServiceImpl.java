@@ -1,5 +1,6 @@
 package com.pranav244872.fitness_tracker.service;
 
+import com.pranav244872.fitness_tracker.dto.WorkoutResponse;
 import com.pranav244872.fitness_tracker.exception.ResourceNotFoundException;
 import com.pranav244872.fitness_tracker.model.Category;
 import com.pranav244872.fitness_tracker.model.Workout;
@@ -20,7 +21,7 @@ public class WorkoutServiceImpl implements WorkoutService {
     }
 
     @Override
-    public Workout createWorkout(Long categoryId, Workout workout) {
+    public WorkoutResponse createWorkout(Long categoryId, Workout workout) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cannot add workout. Category not found with id: " + categoryId));
 
@@ -32,27 +33,39 @@ public class WorkoutServiceImpl implements WorkoutService {
         }
 
         workout.setCategory(category);
-
-        return workoutRepository.save(workout);
+        Workout saved = workoutRepository.save(workout);
+        return toResponse(saved);
     }
 
     @Override
-    public List<Workout> getWorkoutsByCategoryId(Long categoryId) {
+    public List<WorkoutResponse> getWorkoutsByCategoryId(Long categoryId) {
         if (!categoryRepository.existsById(categoryId)) {
             throw new ResourceNotFoundException("Category not found with id: " + categoryId);
         }
-        return workoutRepository.findByCategoryId(categoryId);
+        return workoutRepository.findByCategoryId(categoryId).stream()
+            .map(this::toResponse)
+            .toList();
     }
 
     @Override
-    public Workout getWorkoutById(Long id) {
-        return workoutRepository.findById(id)
+    public WorkoutResponse getWorkoutById(Long id) {
+        Workout workout = workoutRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Workout not found with id: " + id));
+        return toResponse(workout);
     }
 
     @Override
     public void deleteWorkout(Long id) {
-        Workout workout = getWorkoutById(id);
+        Workout workout = getWorkoutEntityById(id);
         workoutRepository.delete(workout);
+    }
+
+    private Workout getWorkoutEntityById(Long id) {
+        return workoutRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Workout not found with id: " + id));
+    }
+
+    private WorkoutResponse toResponse(Workout w) {
+        return new WorkoutResponse(w.getId(), w.getName(), w.getTargetSets(), w.getTargetReps(), w.getRestBetweenSetsSeconds());
     }
 }

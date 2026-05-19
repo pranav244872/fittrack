@@ -5,6 +5,8 @@ import java.util.List;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.pranav244872.fitness_tracker.dto.CategoryResponse;
+import com.pranav244872.fitness_tracker.dto.WorkoutResponse;
 import com.pranav244872.fitness_tracker.exception.ResourceNotFoundException;
 import com.pranav244872.fitness_tracker.model.Category;
 import com.pranav244872.fitness_tracker.model.User;
@@ -19,33 +21,48 @@ public class CategoryServiceImpl implements CategoryService {
 	}
 
 	@Override
-	public Category createCategory(Category category) {
+	public CategoryResponse createCategory(Category category) {
         if (category.getName() == null || category.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Category Name cannot be empty");
         }
 
-		// get the currently logged in user from the security context
 		User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-		// attach the user to the category
 		category.setUser(currentUser);
 
-        return categoryRepository.save(category);
+        Category saved = categoryRepository.save(category);
+        return toResponse(saved);
 	}
 
 	@Override
-	public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+	public List<CategoryResponse> getAllCategories() {
+        return categoryRepository.findAll().stream()
+            .map(this::toResponse)
+            .toList();
 	}
 
 	@Override
-	public Category getCategoryById(Long id) {
-		return categoryRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
+	public CategoryResponse getCategoryById(Long id) {
+		Category category = categoryRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
+        return toResponse(category);
 	}
 
 	@Override
 	public void deleteCategory(Long id) {
-        Category category = getCategoryById(id);
+        Category category = getCategoryByIdEntity(id);
         categoryRepository.delete(category);
 	}
+
+    private Category getCategoryByIdEntity(Long id) {
+        return categoryRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
+    }
+
+    private CategoryResponse toResponse(Category c) {
+        List<WorkoutResponse> workouts = c.getWorkouts() == null ? List.of() :
+            c.getWorkouts().stream()
+                .map(w -> new WorkoutResponse(w.getId(), w.getName(), w.getTargetSets(), w.getTargetReps(), w.getRestBetweenSetsSeconds()))
+                .toList();
+        return new CategoryResponse(c.getId(), c.getName(), workouts);
+    }
 }

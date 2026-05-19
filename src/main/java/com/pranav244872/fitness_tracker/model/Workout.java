@@ -1,8 +1,5 @@
 package com.pranav244872.fitness_tracker.model;
 
-
-import com.fasterxml.jackson.annotation.JsonBackReference;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -36,7 +33,6 @@ public class Workout {
 
     @ManyToOne
     @JoinColumn(name="category_id")
-    @JsonBackReference
     private Category category;
 
 	///////////////////////////////////////////////////////////////////////////

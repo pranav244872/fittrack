@@ -1,5 +1,6 @@
 package com.pranav244872.fitness_tracker.service;
 
+import com.pranav244872.fitness_tracker.dto.MeditationLogResponse;
 import com.pranav244872.fitness_tracker.exception.ResourceNotFoundException;
 import com.pranav244872.fitness_tracker.model.MeditationLog;
 import com.pranav244872.fitness_tracker.model.User;
@@ -15,31 +16,32 @@ public class MeditationLogServiceImpl implements MeditationLogService {
 
     private final MeditationLogRepository meditationLogRepository;
 
-    // Manual constructor injection
     public MeditationLogServiceImpl(MeditationLogRepository meditationLogRepository) {
         this.meditationLogRepository = meditationLogRepository;
     }
 
     @Override
-    public MeditationLog logMeditation(int durationMinutes) {
+    public MeditationLogResponse logMeditation(int durationMinutes) {
         if (durationMinutes <= 0) {
             throw new IllegalArgumentException("Meditation duration must be greater than zero minutes");
         }
 
-        // Get the currently logged-in user
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         MeditationLog log = new MeditationLog();
         log.setCompletionDate(LocalDateTime.now());
         log.setDurationMinutes(durationMinutes);
-        log.setUser(currentUser); // Attach the user!
+        log.setUser(currentUser);
 
-        return meditationLogRepository.save(log);
+        MeditationLog saved = meditationLogRepository.save(log);
+        return toResponse(saved);
     }
 
     @Override
-    public List<MeditationLog> getAllMeditationLogs() {
-        return meditationLogRepository.findAll();
+    public List<MeditationLogResponse> getAllMeditationLogs() {
+        return meditationLogRepository.findAll().stream()
+            .map(this::toResponse)
+            .toList();
     }
 
     @Override
@@ -48,5 +50,9 @@ public class MeditationLogServiceImpl implements MeditationLogService {
             throw new ResourceNotFoundException("Meditation log not found with id: " + id);
         }
         meditationLogRepository.deleteById(id);
+    }
+
+    private MeditationLogResponse toResponse(MeditationLog log) {
+        return new MeditationLogResponse(log.getId(), log.getDurationMinutes(), log.getCompletionDate());
     }
 }

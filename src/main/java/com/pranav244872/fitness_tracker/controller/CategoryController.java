@@ -1,5 +1,6 @@
 package com.pranav244872.fitness_tracker.controller;
 
+import com.pranav244872.fitness_tracker.dto.CategoryResponse;
 import com.pranav244872.fitness_tracker.model.Category;
 
 import java.util.List;
@@ -26,18 +27,18 @@ public class CategoryController {
 	private final CategoryService categoryService;
 
     @PostMapping
-    public ResponseEntity<Category> createCategory(@RequestBody Category category) {
-        Category created = categoryService.createCategory(category);
+    public ResponseEntity<CategoryResponse> createCategory(@RequestBody Category category) {
+        CategoryResponse created = categoryService.createCategory(category);
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @GetMapping
-    public ResponseEntity<List<Category>> getAllCategories() {
+    public ResponseEntity<List<CategoryResponse>> getAllCategories() {
         return ResponseEntity.ok(categoryService.getAllCategories());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Category> getCategoryById(@PathVariable Long id) {
+    public ResponseEntity<CategoryResponse> getCategoryById(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.getCategoryById(id));
     }
 
