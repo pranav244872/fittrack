@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +18,8 @@ import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
-    // KEEP THIS SECRET in real apps!
-    // This is a securely generated 256-bit Base64 encoded key
-    private static final String SECRET_KEY = "KzJ4cTdlM2g2ZjU0YTgzajI5eG04bXAzcTZnNWs4djI=";
+    @Value("${JWT_SECRET}")
+    private String secretKey;
     
     // extract username from the token
     public String extractUsername(String token) {
@@ -71,7 +71,7 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
