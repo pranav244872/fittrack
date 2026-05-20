@@ -55,6 +55,11 @@ body {
   color: var(--primary);
 }
 
+.header-icon {
+  width: 28px;
+  height: 28px;
+}
+
 .header-badge {
   font-size: 11px;
   font-weight: 700;
