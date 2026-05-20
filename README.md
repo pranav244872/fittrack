@@ -87,7 +87,7 @@ export ADMIN_PASSWORD=yourpassword
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/auth/register` | Register (body: `username`, `email`, `password`) |
+| `POST` | `/api/auth/register` | Register (body: `username` [lowercase, numbers, `_` only], `email`, `password`) |
 | `POST` | `/api/auth/login` | Login (body: `username`, `password`) → returns JWT |
 | `GET` | `/api/health` | Health check |
 
