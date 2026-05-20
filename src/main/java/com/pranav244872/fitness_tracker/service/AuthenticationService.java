@@ -48,6 +48,11 @@ public class AuthenticationService {
             throw new IllegalArgumentException("Username is already taken");
         }
 
+        if (!username.matches("^[a-z0-9_]+$")) {
+            log.warn("Registration failed: Username {} contains invalid characters", username);
+            throw new IllegalArgumentException("Username can only contain lowercase letters, numbers, and underscores");
+        }
+
         if (repository.existsByEmail(email)) {
             log.warn("Registration failed: Email {} is already registered", email);
             throw new IllegalArgumentException("Email is already registered");
