@@ -16,14 +16,24 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class JwtService {
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
+
     @Value("${JWT_SECRET}")
     private String secretKey;
     
     // extract username from the token
     public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+        try {
+            return extractClaim(token, Claims::getSubject);
+        } catch (Exception e) {
+            log.warn("Failed to extract username from token: {}", e.getMessage());
+            return null;
+        }
     }
 
     // generate a token for a user (valid for 24 hours)
@@ -44,8 +54,17 @@ public class JwtService {
 
     // validate token
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        try {
+            final String username = extractUsername(token);
+            boolean isValid = (username != null && username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+            if (!isValid) {
+                log.warn("Token validation failed for user: {}", userDetails.getUsername());
+            }
+            return isValid;
+        } catch (Exception e) {
+            log.warn("Invalid JWT token structure or signature: {}", e.getMessage());
+            return false;
+        }
     }
 
     private boolean isTokenExpired(String token) {

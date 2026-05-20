@@ -10,8 +10,12 @@ import com.pranav244872.fitness_tracker.model.User;
 import com.pranav244872.fitness_tracker.repository.UserRepository;
 import com.pranav244872.fitness_tracker.security.JwtService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class AuthenticationService {
+    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -26,6 +30,7 @@ public class AuthenticationService {
 	}
 
     public AuthResponse register(String username, String email, String password) {
+        log.info("Processing registration for username: {}", username);
         User user = new User();
         user.setUsername(username);
         user.setEmail(email);
@@ -33,17 +38,27 @@ public class AuthenticationService {
         user.setRole(User.Role.USER);
 
         repository.save(user);
+        log.info("User {} successfully registered and saved to database", username);
 
         String jwtToken = jwtService.generateToken(user);
+        log.info("Generated JWT token for new user: {}", username);
         return new AuthResponse(jwtToken);
     }
 
     public AuthResponse authenticate(String username, String password) {
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+        log.info("Attempting authentication for username: {}", username);
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+            log.info("Authentication successful for username: {}", username);
+        } catch (Exception e) {
+            log.warn("Authentication failed for username: {} - Reason: {}", username, e.getMessage());
+            throw e;
+        }
 
         User user = repository.findByUsername(username).orElseThrow();
 
         String jwtToken = jwtService.generateToken(user);
+        log.info("Generated JWT token for authenticated user: {}", username);
         return new AuthResponse(jwtToken);
     }
 }
