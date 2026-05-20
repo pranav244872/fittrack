@@ -31,6 +31,17 @@ public class AuthenticationService {
 
     public AuthResponse register(String username, String email, String password) {
         log.info("Processing registration for username: {}", username);
+        
+        if (repository.existsByUsername(username)) {
+            log.warn("Registration failed: Username {} is already taken", username);
+            throw new IllegalArgumentException("Username is already taken");
+        }
+        
+        if (repository.existsByEmail(email)) {
+            log.warn("Registration failed: Email {} is already registered", email);
+            throw new IllegalArgumentException("Email is already registered");
+        }
+
         User user = new User();
         user.setUsername(username);
         user.setEmail(email);
