@@ -17,22 +17,23 @@ A production-grade fitness tracking REST API with real-time meditation music str
 - **Streaming** — `GET /api/music/{id}/stream` serves audio with proper MIME headers
 - **Download** — `GET /api/music/{id}/download` for offline caching in the mobile app
 - **Auto-Seeding** — 4 initial tracks are seeded on first startup if present in the music directory
+- **Admin Preview** — Play tracks directly in the admin dashboard with inline audio player
 
 ### Security
 - **JWT Authentication** — Stateless token-based auth on all `/api/**` endpoints
-- **API Secret Header** — Every request must include `X-App-Secret` or receive `403 Forbidden`
-- **Rate Limiting** — 120 requests/minute per IP address, returns `429` when exceeded
+- **API Secret Header** — Requests to protected endpoints must include `X-App-Secret` or receive `403 Forbidden`. Exempt paths: `/api/health`, `/admin/**`, `/api/admin/**`, `/api/music/{id}/stream`, and static assets
+- **Rate Limiting** — 120 requests/minute per IP address, returns `429` when exceeded. Exempt: admin dashboard and health check
 - **Banned Email Registry** — Block specific emails from registering
 - **Multi-tenant Isolation** — All data scoped to the authenticated user
 
 ### Admin Dashboard
-- **Browser-based UI** at `/admin/` — dark-themed, single-page HTML/JS dashboard
-- **HTTP Basic Auth** — separate from JWT, credentials in `.env`
+- **Browser-based UI** at `/admin` — dark-themed, single-page HTML/JS dashboard with custom favicon
+- **HTTP Basic Auth** — separate from JWT, credentials in `.env`. Dashboard prompts for credentials on first API call
 - **User Management** — List all users, delete accounts (cascades all data), ban emails
 - **System Health** — Disk space, JVM memory, database status, music storage metrics
 - **Global Analytics** — DAU, workouts/meditations today & this week, most popular track
-- **Music Management** — Upload new MP3s, list tracks, delete tracks
-- **Live Log Viewer** — In-memory logback appender streams last 1000 log lines with auto-refresh
+- **Music Management** — Upload new MP3s, list tracks, delete tracks, preview playback with inline audio player
+- **Live Log Viewer** — In-memory logback appender streams last 300 log lines with auto-refresh toggle
 
 ## Tech Stack
 
@@ -67,7 +68,7 @@ docker compose up --build -d
 ```
 
 The API will be available at `http://localhost:8080`.  
-The admin dashboard will be at `http://localhost:8080/admin/`.
+The admin dashboard will be at `http://localhost:8080/admin`.
 
 ### Local Development
 
@@ -121,9 +122,9 @@ export ADMIN_PASSWORD=yourpassword
 #### Music
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/music` | List all available tracks |
-| `GET` | `/api/music/{id}/stream` | Stream MP3 audio |
-| `GET` | `/api/music/{id}/download` | Download MP3 file |
+| `GET` | `/api/music` | List all available tracks (JWT) |
+| `GET` | `/api/music/{id}/stream` | Stream MP3 audio (JWT or admin Basic Auth) |
+| `GET` | `/api/music/{id}/download` | Download MP3 file (JWT) |
 
 ### Admin Endpoints (HTTP Basic Auth)
 
@@ -146,7 +147,7 @@ export ADMIN_PASSWORD=yourpassword
 
 ```
 src/main/java/com/pranav244872/fitness_tracker/
-├── config/              # SecurityConfig, ApplicationConfig, InMemoryLogAppender, MusicDataSeeder
+├── config/              # SecurityConfig, ApplicationConfig, WebMvcConfig, InMemoryLogAppender, MusicDataSeeder
 ├── controller/          # AuthController, AdminController, MusicController, TrackingLogController, etc.
 ├── dto/                 # Request/Response DTOs (AuthDTOs, WorkoutLog*, MeditationLog*, etc.)
 ├── exception/           # GlobalExceptionHandler, ResourceNotFoundException
@@ -159,24 +160,28 @@ src/main/java/com/pranav244872/fitness_tracker/
 src/main/resources/
 ├── application.yaml     # Spring Boot configuration
 ├── logback-spring.xml   # Logging config (console + in-memory appender)
-└── static/admin/        # Admin dashboard (index.html, style.css)
+├── static/admin/        # Admin dashboard (index.html, style.css)
+└── static/favicon.svg   # Site favicon
 ```
 
 ## Architecture
 
 ```
 Mobile App ──► [X-App-Secret Filter] ──► [Rate Limiter] ──► [JWT Filter] ──► Controllers
-                                                                                  │
-Browser    ──► [HTTP Basic Auth] ──────────────────────────► Admin Controller ─────┤
-                                                                                  │
-                                                                            PostgreSQL
-                                                                            Music Files (volume)
+                                                                                    │
+Browser    ──► [X-App-Secret Filter*] ──► [Rate Limiter*] ──► [HTTP Basic Auth] ──► Admin Controller
+                                                                                    │
+                                                                              PostgreSQL
+                                                                              Music Files (volume)
 ```
 
-- **Dual Security Chains** — `@Order(1)` for admin (HTTP Basic), `@Order(2)` for API (JWT)
+*Admin paths (`/admin/**`, `/api/admin/**`) are exempt from the API secret and rate limit filters.
+
+- **Dual Security Chains** — `@Order(1)` for admin (HTTP Basic, covers `/api/admin/**` and `/api/music/*/stream`), `@Order(2)` for API (JWT)
 - **DTO Pattern** — Entities never exposed directly, preventing password hash leakage
 - **Docker Volumes** — PostgreSQL data in `postgres_data/`, music files in `music_data/`
 - **Stateless** — No server-side sessions; JWT validated on every request
+- **CI/CD** — GitHub push triggers a webhook on the server that pulls, rebuilds, and restarts via Docker Compose
 
 ## Environment Variables
 
@@ -188,6 +193,6 @@ See `.env.example` for all required variables. Key ones:
 | `DB_PASSWORD` | PostgreSQL password |
 | `DB_NAME` | Database name |
 | `JWT_SECRET` | Base64-encoded HMAC-SHA256 key for JWT signing |
-| `APP_SECRET` | Secret header value that the mobile app must send |
+| `APP_SECRET` | Secret header value that the mobile app must send. Leave blank to disable the check entirely |
 | `ADMIN_USERNAME` | HTTP Basic auth username for admin dashboard |
 | `ADMIN_PASSWORD` | HTTP Basic auth password for admin dashboard |
