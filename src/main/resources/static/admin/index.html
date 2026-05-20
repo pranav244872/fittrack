@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitTrack — Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <span class="header-logo">⚡ FitTrack</span>
+            <span class="header-badge">Admin</span>
+        </div>
+        <div class="header-right">
+            <span class="status-dot"></span>
+            <span style="font-size:13px;color:var(--text-dim)" id="uptime">Loading...</span>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <!-- Stats Row -->
+        <div class="stats-row" id="stats-row">
+            <div class="stat-card"><div class="stat-value" id="stat-users">—</div><div class="stat-label">Total Users</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-dau">—</div><div class="stat-label">Daily Active Users</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-workouts-today">—</div><div class="stat-label">Workouts Today</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-meditations-week">—</div><div class="stat-label">Meditations This Week</div></div>
+        </div>
+
+        <!-- Users Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title"><span class="icon">👥</span> Users</span>
+                <span style="font-size:12px;color:var(--text-muted)" id="user-count-label"></span>
+            </div>
+            <div class="panel-body" style="max-height:400px;overflow-y:auto">
+                <table><thead><tr><th>Username</th><th>Email</th><th>Joined</th><th>Actions</th></tr></thead>
+                <tbody id="users-table"><tr><td colspan="4" class="loading">Loading users...</td></tr></tbody></table>
+            </div>
+        </div>
+
+        <!-- Banned Emails Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title"><span class="icon">🚫</span> Banned Emails</span>
+            </div>
+            <div class="panel-body">
+                <table><thead><tr><th>Email</th><th>Banned At</th><th>Actions</th></tr></thead>
+                <tbody id="banned-table"><tr><td colspan="3" class="loading">Loading...</td></tr></tbody></table>
+                <div class="input-group">
+                    <input type="email" id="ban-email-input" placeholder="email@example.com">
+                    <button class="btn btn-danger" onclick="banEmail()">Ban Email</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Health -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title"><span class="icon">💚</span> System Health</span>
+                <button class="btn btn-primary" onclick="loadHealth()">Refresh</button>
+            </div>
+            <div class="panel-body" id="health-body">
+                <div class="loading">Loading health data...</div>
+            </div>
+        </div>
+
+        <!-- Analytics -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title"><span class="icon">📊</span> Analytics</span>
+                <button class="btn btn-primary" onclick="loadAnalytics()">Refresh</button>
+            </div>
+            <div class="panel-body" id="analytics-body">
+                <div class="loading">Loading analytics...</div>
+            </div>
+        </div>
+
+        <!-- Music Management -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title"><span class="icon">🎵</span> Music Tracks</span>
+            </div>
+            <div class="panel-body">
+                <table><thead><tr><th>Name</th><th>Size</th><th>Actions</th></tr></thead>
+                <tbody id="music-table"><tr><td colspan="3" class="loading">Loading...</td></tr></tbody></table>
+                <div class="upload-form">
+                    <input type="text" id="track-name-input" placeholder="Track display name" style="max-width:200px">
+                    <input type="file" id="track-file-input" accept=".mp3">
+                    <button class="btn btn-success" onclick="uploadTrack()">Upload Track</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Panel -->
+        <div class="panel panel-full">
+            <div class="panel-header">
+                <span class="panel-title"><span class="icon">📋</span> Application Logs</span>
+                <div style="display:flex;gap:8px">
+                    <button class="btn btn-primary" onclick="loadLogs()">Refresh</button>
+                    <button class="btn btn-warning" id="auto-scroll-btn" onclick="toggleAutoRefresh()">Auto: OFF</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="log-viewer" id="log-viewer">Loading logs...</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+const API = '/api/admin';
+let autoRefreshInterval = null;
+
+// Basic auth header (sent automatically by browser after first prompt)
+function headers() {
+    return { 'Content-Type': 'application/json' };
+}
+
+async function apiFetch(path, opts = {}) {
+    const res = await fetch(API + path, opts);
+    if (res.status === 401) {
+        alert('Authentication required. Please refresh and enter admin credentials.');
+        return null;
+    }
+    return res.json();
+}
+
+// ─── Users ──────────────────────────
+async function loadUsers() {
+    const data = await apiFetch('/users');
+    if (!data) return;
+    const tbody = document.getElementById('users-table');
+    document.getElementById('user-count-label').textContent = data.length + ' users';
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No users yet</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.map(u => `
+        <tr>
+            <td><strong>${esc(u.username)}</strong></td>
+            <td class="email-cell">${esc(u.email)}</td>
+            <td style="font-size:12px;color:var(--text-muted)">${formatDate(u.createdAt)}</td>
+            <td>
+                <button class="btn btn-warning" onclick="banUserEmail('${esc(u.email)}')">Ban</button>
+                <button class="btn btn-danger" onclick="deleteUser(${u.id}, '${esc(u.username)}')">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function deleteUser(id, username) {
+    if (!confirm(`Delete user "${username}" and ALL their data?`)) return;
+    await fetch(API + '/users/' + id, { method: 'DELETE' });
+    loadUsers();
+    loadAnalytics();
+}
+
+// ─── Banned Emails ──────────────────
+async function loadBannedEmails() {
+    const data = await apiFetch('/banned-emails');
+    if (!data) return;
+    const tbody = document.getElementById('banned-table');
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No banned emails</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.map(b => `
+        <tr>
+            <td>${esc(b.email)}</td>
+            <td style="font-size:12px;color:var(--text-muted)">${formatDate(b.bannedAt)}</td>
+            <td><button class="btn btn-success" onclick="unbanEmail(${b.id})">Unban</button></td>
+        </tr>
+    `).join('');
+}
+
+async function banEmail() {
+    const email = document.getElementById('ban-email-input').value.trim();
+    if (!email) return;
+    await fetch(API + '/banned-emails', {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ email })
+    });
+    document.getElementById('ban-email-input').value = '';
+    loadBannedEmails();
+}
+
+async function banUserEmail(email) {
+    if (!confirm(`Ban email "${email}" from future registration?`)) return;
+    await fetch(API + '/banned-emails', {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ email, reason: 'Banned via admin panel' })
+    });
+    loadBannedEmails();
+}
+
+async function unbanEmail(id) {
+    await fetch(API + '/banned-emails/' + id, { method: 'DELETE' });
+    loadBannedEmails();
+}
+
+// ─── Health ─────────────────────────
+async function loadHealth() {
+    const data = await apiFetch('/health');
+    if (!data) return;
+    const body = document.getElementById('health-body');
+    const diskPct = data.diskUsagePercent?.toFixed(1) || 0;
+    const diskColor = diskPct > 80 ? 'var(--danger)' : diskPct > 60 ? 'var(--warning)' : 'var(--success)';
+    const memUsed = data.jvmUsedMemoryMB?.toFixed(0) || 0;
+    const memMax = data.jvmMaxMemoryMB?.toFixed(0) || 0;
+    const memPct = memMax > 0 ? ((memUsed / memMax) * 100).toFixed(1) : 0;
+
+    document.getElementById('uptime').textContent = 'Uptime: ' + formatUptime(data.uptimeSeconds || 0);
+
+    body.innerHTML = `
+        <div class="health-metric">
+            <span class="health-metric-label">Database</span>
+            <span class="health-metric-value" style="color:${data.databaseStatus === 'HEALTHY' ? 'var(--success)' : 'var(--danger)'}">${data.databaseStatus}</span>
+        </div>
+        <div class="health-metric">
+            <span class="health-metric-label">Disk Usage</span>
+            <span class="health-metric-value">${data.diskUsedGB?.toFixed(1)} / ${data.diskTotalGB?.toFixed(1)} GB (${diskPct}%)</span>
+        </div>
+        <div class="health-bar"><div class="health-bar-fill" style="width:${diskPct}%;background:${diskColor}"></div></div>
+        <div class="health-metric" style="margin-top:12px">
+            <span class="health-metric-label">JVM Memory</span>
+            <span class="health-metric-value">${memUsed} / ${memMax} MB (${memPct}%)</span>
+        </div>
+        <div class="health-bar"><div class="health-bar-fill" style="width:${memPct}%;background:var(--primary)"></div></div>
+        <div class="health-metric" style="margin-top:12px">
+            <span class="health-metric-label">Music Storage</span>
+            <span class="health-metric-value">${data.musicFilesCount || 0} files (${(data.musicStorageMB || 0).toFixed(1)} MB)</span>
+        </div>
+    `;
+}
+
+// ─── Analytics ──────────────────────
+async function loadAnalytics() {
+    const data = await apiFetch('/analytics');
+    if (!data) return;
+    document.getElementById('stat-users').textContent = data.totalUsers || 0;
+    document.getElementById('stat-dau').textContent = data.dailyActiveUsers || 0;
+    document.getElementById('stat-workouts-today').textContent = data.workoutsToday || 0;
+    document.getElementById('stat-meditations-week').textContent = data.meditationsThisWeek || 0;
+
+    const body = document.getElementById('analytics-body');
+    body.innerHTML = `
+        <div class="health-metric">
+            <span class="health-metric-label">Workouts This Week</span>
+            <span class="health-metric-value" style="color:var(--primary)">${data.workoutsThisWeek || 0}</span>
+        </div>
+        <div class="health-metric">
+            <span class="health-metric-label">Meditations Today</span>
+            <span class="health-metric-value" style="color:var(--secondary)">${data.meditationsToday || 0}</span>
+        </div>
+        <div class="health-metric">
+            <span class="health-metric-label">Most Popular Track</span>
+            <span class="health-metric-value">🎵 ${esc(data.popularTrackName || 'None')} (${data.popularTrackPlays || 0} plays)</span>
+        </div>
+    `;
+}
+
+// ─── Music ──────────────────────────
+async function loadMusic() {
+    const data = await apiFetch('/music');
+    if (!data) return;
+    const tbody = document.getElementById('music-table');
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No tracks uploaded</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.map(t => `
+        <tr>
+            <td><strong>🎵 ${esc(t.displayName)}</strong></td>
+            <td style="font-size:12px;color:var(--text-muted)">${(t.fileSizeBytes / (1024*1024)).toFixed(1)} MB</td>
+            <td><button class="btn btn-danger" onclick="deleteTrack(${t.id}, '${esc(t.displayName)}')">Delete</button></td>
+        </tr>
+    `).join('');
+}
+
+async function uploadTrack() {
+    const name = document.getElementById('track-name-input').value.trim();
+    const fileInput = document.getElementById('track-file-input');
+    if (!name || !fileInput.files[0]) { alert('Please provide a name and file'); return; }
+
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('file', fileInput.files[0]);
+
+    await fetch(API + '/music', { method: 'POST', body: formData });
+    document.getElementById('track-name-input').value = '';
+    fileInput.value = '';
+    loadMusic();
+    loadHealth();
+}
+
+async function deleteTrack(id, name) {
+    if (!confirm(`Delete track "${name}"?`)) return;
+    await fetch(API + '/music/' + id, { method: 'DELETE' });
+    loadMusic();
+    loadHealth();
+}
+
+// ─── Logs ───────────────────────────
+async function loadLogs() {
+    const data = await apiFetch('/logs?lines=300');
+    if (!data) return;
+    const viewer = document.getElementById('log-viewer');
+    viewer.textContent = data.join('');
+    viewer.scrollTop = viewer.scrollHeight;
+}
+
+function toggleAutoRefresh() {
+    const btn = document.getElementById('auto-scroll-btn');
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+        btn.textContent = 'Auto: OFF';
+        btn.className = 'btn btn-warning';
+    } else {
+        autoRefreshInterval = setInterval(loadLogs, 3000);
+        btn.textContent = 'Auto: ON';
+        btn.className = 'btn btn-success';
+    }
+}
+
+// ─── Helpers ────────────────────────
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function formatDate(s) {
+    if (!s) return '—';
+    const d = new Date(s);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatUptime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+// ─── Init ───────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+    loadUsers();
+    loadBannedEmails();
+    loadHealth();
+    loadAnalytics();
+    loadMusic();
+    loadLogs();
+});
+</script>
+</body>
+</html>

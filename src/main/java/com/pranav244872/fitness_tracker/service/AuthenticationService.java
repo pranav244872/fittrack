@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.pranav244872.fitness_tracker.dto.AuthDTOs.AuthResponse;
 import com.pranav244872.fitness_tracker.model.User;
+import com.pranav244872.fitness_tracker.repository.BannedEmailRepository;
 import com.pranav244872.fitness_tracker.repository.UserRepository;
 import com.pranav244872.fitness_tracker.security.JwtService;
 
@@ -17,26 +18,36 @@ import org.slf4j.LoggerFactory;
 public class AuthenticationService {
     private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);
     private final UserRepository repository;
+    private final BannedEmailRepository bannedEmailRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
-	public AuthenticationService(UserRepository repository, PasswordEncoder passwordEncoder, JwtService jwtService,
-			AuthenticationManager authenticationManager) {
-		this.repository = repository;
-		this.passwordEncoder = passwordEncoder;
-		this.jwtService = jwtService;
-		this.authenticationManager = authenticationManager;
-	}
+    public AuthenticationService(UserRepository repository,
+                                  BannedEmailRepository bannedEmailRepository,
+                                  PasswordEncoder passwordEncoder,
+                                  JwtService jwtService,
+                                  AuthenticationManager authenticationManager) {
+        this.repository = repository;
+        this.bannedEmailRepository = bannedEmailRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+        this.authenticationManager = authenticationManager;
+    }
 
     public AuthResponse register(String username, String email, String password) {
         log.info("Processing registration for username: {}", username);
-        
+
+        if (bannedEmailRepository.existsByEmail(email.toLowerCase())) {
+            log.warn("Registration blocked: Email {} is banned", email);
+            throw new IllegalArgumentException("This email has been banned from registration");
+        }
+
         if (repository.existsByUsername(username)) {
             log.warn("Registration failed: Username {} is already taken", username);
             throw new IllegalArgumentException("Username is already taken");
         }
-        
+
         if (repository.existsByEmail(email)) {
             log.warn("Registration failed: Email {} is already registered", email);
             throw new IllegalArgumentException("Email is already registered");

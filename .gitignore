@@ -37,3 +37,7 @@ postgres_data/
 *.jar
 *.class
 setup-deploy.sh
+
+# Music files (served from Docker volume)
+music/
+music_data/

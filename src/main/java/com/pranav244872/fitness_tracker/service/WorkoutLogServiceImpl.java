@@ -9,6 +9,8 @@ import com.pranav244872.fitness_tracker.repository.WorkoutLogRepository;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 
 @Service
 public class WorkoutLogServiceImpl implements WorkoutLogService {
@@ -40,6 +42,14 @@ public class WorkoutLogServiceImpl implements WorkoutLogService {
     }
 
     @Override
+    public List<WorkoutLogResponse> getWorkoutLogsByMonth(int year, int month, Long userId) {
+        LocalDateTime startDate = LocalDateTime.of(year, month, 1, 0, 0);
+        LocalDateTime endDate = startDate.plusMonths(1);
+        return workoutLogRepository.findByUserIdAndDateRange(userId, startDate, endDate).stream()
+                .map(log -> new WorkoutLogResponse(log.getId(), log.getDurationMinutes(), log.getCompletionDate(), log.getCategory().getId(), log.getCategory().getName()))
+                .toList();
+    }
+
     public List<WorkoutLogResponse> getAllWorkoutLogs() {
         return workoutLogRepository.findAll().stream()
             .map(this::toResponse)

@@ -1,11 +1,9 @@
 package com.pranav244872.fitness_tracker.service;
 
 import com.pranav244872.fitness_tracker.dto.MeditationLogResponse;
-import com.pranav244872.fitness_tracker.exception.ResourceNotFoundException;
 import com.pranav244872.fitness_tracker.model.MeditationLog;
 import com.pranav244872.fitness_tracker.model.User;
 import com.pranav244872.fitness_tracker.repository.MeditationLogRepository;
-
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
@@ -13,7 +11,6 @@ import java.util.List;
 
 @Service
 public class MeditationLogServiceImpl implements MeditationLogService {
-
     private final MeditationLogRepository meditationLogRepository;
 
     public MeditationLogServiceImpl(MeditationLogRepository meditationLogRepository) {
@@ -22,37 +19,34 @@ public class MeditationLogServiceImpl implements MeditationLogService {
 
     @Override
     public MeditationLogResponse logMeditation(int durationMinutes) {
-        if (durationMinutes <= 0) {
-            throw new IllegalArgumentException("Meditation duration must be greater than zero minutes");
-        }
+        return logMeditation(durationMinutes, null);
+    }
 
-        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
+    @Override
+    public MeditationLogResponse logMeditation(int durationMinutes, Long trackId) {
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         MeditationLog log = new MeditationLog();
-        log.setCompletionDate(LocalDateTime.now());
         log.setDurationMinutes(durationMinutes);
-        log.setUser(currentUser);
-
+        log.setCompletionDate(LocalDateTime.now());
+        log.setUser(user);
+        log.setTrackId(trackId);
         MeditationLog saved = meditationLogRepository.save(log);
-        return toResponse(saved);
+        return new MeditationLogResponse(saved.getId(), saved.getDurationMinutes(), saved.getCompletionDate(), saved.getTrackId());
     }
 
     @Override
     public List<MeditationLogResponse> getAllMeditationLogs() {
         return meditationLogRepository.findAll().stream()
-            .map(this::toResponse)
-            .toList();
+                .map(log -> new MeditationLogResponse(log.getId(), log.getDurationMinutes(), log.getCompletionDate(), log.getTrackId()))
+                .toList();
     }
 
     @Override
-    public void deleteMeditationLog(Long id) {
-        if (!meditationLogRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Meditation log not found with id: " + id);
-        }
-        meditationLogRepository.deleteById(id);
-    }
-
-    private MeditationLogResponse toResponse(MeditationLog log) {
-        return new MeditationLogResponse(log.getId(), log.getDurationMinutes(), log.getCompletionDate());
+    public List<MeditationLogResponse> getMeditationLogsByMonth(int year, int month, Long userId) {
+        LocalDateTime startDate = LocalDateTime.of(year, month, 1, 0, 0);
+        LocalDateTime endDate = startDate.plusMonths(1);
+        return meditationLogRepository.findByUserIdAndDateRange(userId, startDate, endDate).stream()
+                .map(log -> new MeditationLogResponse(log.getId(), log.getDurationMinutes(), log.getCompletionDate(), log.getTrackId()))
+                .toList();
     }
 }

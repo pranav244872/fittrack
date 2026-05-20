@@ -5,5 +5,6 @@ import java.time.LocalDateTime;
 public record MeditationLogResponse(
     Long id,
     int durationMinutes,
-    LocalDateTime completionDate
+    LocalDateTime completionDate,
+    Long trackId
 ) {}

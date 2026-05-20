@@ -4,10 +4,12 @@ import com.pranav244872.fitness_tracker.dto.MeditationLogRequest;
 import com.pranav244872.fitness_tracker.dto.MeditationLogResponse;
 import com.pranav244872.fitness_tracker.dto.WorkoutLogRequest;
 import com.pranav244872.fitness_tracker.dto.WorkoutLogResponse;
+import com.pranav244872.fitness_tracker.model.User;
 import com.pranav244872.fitness_tracker.service.MeditationLogService;
 import com.pranav244872.fitness_tracker.service.WorkoutLogService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,18 +36,33 @@ public class TrackingLogController {
     }
 
     @GetMapping("/workouts")
-    public ResponseEntity<List<WorkoutLogResponse>> getAllWorkoutLogs() {
+    public ResponseEntity<List<WorkoutLogResponse>> getAllWorkoutLogs(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @AuthenticationPrincipal User user) {
+        if (year != null && month != null) {
+            return ResponseEntity.ok(workoutLogService.getWorkoutLogsByMonth(year, month, user.getId()));
+        }
         return ResponseEntity.ok(workoutLogService.getAllWorkoutLogs());
     }
 
     @PostMapping("/meditation")
     public ResponseEntity<MeditationLogResponse> logMeditation(@RequestBody MeditationLogRequest request) {
-        MeditationLogResponse createdLog = meditationLogService.logMeditation(request.durationMinutes());
+        MeditationLogResponse createdLog = meditationLogService.logMeditation(
+            request.durationMinutes(),
+            request.trackId()
+        );
         return new ResponseEntity<>(createdLog, HttpStatus.CREATED);
     }
 
     @GetMapping("/meditation")
-    public ResponseEntity<List<MeditationLogResponse>> getAllMeditationLogs() {
+    public ResponseEntity<List<MeditationLogResponse>> getAllMeditationLogs(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @AuthenticationPrincipal User user) {
+        if (year != null && month != null) {
+            return ResponseEntity.ok(meditationLogService.getMeditationLogsByMonth(year, month, user.getId()));
+        }
         return ResponseEntity.ok(meditationLogService.getAllMeditationLogs());
     }
 }
