@@ -82,7 +82,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/auth/register", "/api/auth/login", "/api/health").permitAll()
                     .requestMatchers("/admin/**").permitAll()
                     .requestMatchers("/api/music/**").authenticated()
-                    .requestMatchers("/favicon.ico", "/**.ico", "/**.png", "/**.jpg", "/**.css", "/**.js").permitAll()
+                    .requestMatchers("/favicon.ico", "/**.ico", "/**.png", "/**.jpg", "/**.css", "/**.js", "/**.svg").permitAll()
                     .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

@@ -44,6 +44,7 @@ public class ApiSecretFilter extends OncePerRequestFilter {
                 || path.endsWith(".jpg")
                 || path.endsWith(".css")
                 || path.endsWith(".js")
+                || path.endsWith(".svg")
                 || appSecret.isBlank()) {
             filterChain.doFilter(request, response);
             return;
