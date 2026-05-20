@@ -5,10 +5,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -34,33 +39,39 @@ public class SecurityConfig {
         this.rateLimitFilter = rateLimitFilter;
     }
 
-    // Admin dashboard security (HTTP Basic Auth)
+    // Admin dashboard security (HTTP Basic Auth) - matched first
     @Bean
     @Order(1)
     SecurityFilterChain adminFilterChain(HttpSecurity http,
                                          @Value("${ADMIN_USERNAME:admin}") String adminUser,
                                          @Value("${ADMIN_PASSWORD:admin}") String adminPass) throws Exception {
+
+        // Create a dedicated AuthenticationProvider for admin
+        InMemoryUserDetailsManager adminUserDetails = new InMemoryUserDetailsManager(
+                User.builder()
+                        .username(adminUser)
+                        .password(adminPass)
+                        .roles("ADMIN")
+                        .build()
+        );
+
+        @SuppressWarnings("deprecation")
+        DaoAuthenticationProvider adminAuthProvider = new DaoAuthenticationProvider();
+        adminAuthProvider.setUserDetailsService(adminUserDetails);
+        adminAuthProvider.setPasswordEncoder(NoOpPasswordEncoder.getInstance());
+
         http
             .securityMatcher("/api/admin/**")
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
             .httpBasic(basic -> {})
-            .userDetailsService(username -> {
-                if (username.equals(adminUser)) {
-                    return org.springframework.security.core.userdetails.User.builder()
-                            .username(adminUser)
-                            .password("{noop}" + adminPass)
-                            .roles("ADMIN")
-                            .build();
-                }
-                throw new org.springframework.security.core.userdetails.UsernameNotFoundException("Not found");
-            })
+            .authenticationProvider(adminAuthProvider)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }
 
-    // Main API security (JWT)
+    // Main API security (JWT) - catch-all
     @Bean
     @Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
