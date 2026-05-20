@@ -168,9 +168,8 @@ async function loadUsers() {
 
 async function deleteUser(id, username) {
     if (!confirm(`Delete user "${username}" and ALL their data?`)) return;
-    await fetch(API + '/users/' + id, { method: 'DELETE' });
-    loadUsers();
-    loadAnalytics();
+    const res = await apiFetch('/users/' + id, { method: 'DELETE' });
+    if (res) { loadUsers(); loadAnalytics(); }
 }
 
 // ─── Banned Emails ──────────────────
@@ -194,28 +193,28 @@ async function loadBannedEmails() {
 async function banEmail() {
     const email = document.getElementById('ban-email-input').value.trim();
     if (!email) return;
-    await fetch(API + '/banned-emails', {
+    const res = await apiFetch('/banned-emails', {
         method: 'POST',
-        headers: headers(),
         body: JSON.stringify({ email })
     });
-    document.getElementById('ban-email-input').value = '';
-    loadBannedEmails();
+    if (res) {
+        document.getElementById('ban-email-input').value = '';
+        loadBannedEmails();
+    }
 }
 
 async function banUserEmail(email) {
     if (!confirm(`Ban email "${email}" from future registration?`)) return;
-    await fetch(API + '/banned-emails', {
+    const res = await apiFetch('/banned-emails', {
         method: 'POST',
-        headers: headers(),
         body: JSON.stringify({ email, reason: 'Banned via admin panel' })
     });
-    loadBannedEmails();
+    if (res) loadBannedEmails();
 }
 
 async function unbanEmail(id) {
-    await fetch(API + '/banned-emails/' + id, { method: 'DELETE' });
-    loadBannedEmails();
+    const res = await apiFetch('/banned-emails/' + id, { method: 'DELETE' });
+    if (res) loadBannedEmails();
 }
 
 // ─── Health ─────────────────────────
@@ -306,18 +305,24 @@ async function uploadTrack() {
     formData.append('name', name);
     formData.append('file', fileInput.files[0]);
 
-    await fetch(API + '/music', { method: 'POST', body: formData });
-    document.getElementById('track-name-input').value = '';
-    fileInput.value = '';
-    loadMusic();
-    loadHealth();
+    const auth = getAuthHeader();
+    const res = await fetch(API + '/music', {
+        method: 'POST',
+        body: formData,
+        headers: auth ? { 'Authorization': auth } : {}
+    });
+    if (res.ok) {
+        document.getElementById('track-name-input').value = '';
+        fileInput.value = '';
+        loadMusic();
+        loadHealth();
+    }
 }
 
 async function deleteTrack(id, name) {
     if (!confirm(`Delete track "${name}"?`)) return;
-    await fetch(API + '/music/' + id, { method: 'DELETE' });
-    loadMusic();
-    loadHealth();
+    const res = await apiFetch('/music/' + id, { method: 'DELETE' });
+    if (res) { loadMusic(); loadHealth(); }
 }
 
 // ─── Logs ───────────────────────────
