@@ -37,7 +37,13 @@ public class ApiSecretFilter extends OncePerRequestFilter {
         if (path.equals("/api/health")
                 || path.startsWith("/admin")
                 || path.startsWith("/api/admin")
-                || path.startsWith("/api/music/")  // music streaming is public (requires JWT anyway)
+                || path.startsWith("/api/music/")
+                || path.equals("/favicon.ico")
+                || path.endsWith(".ico")
+                || path.endsWith(".png")
+                || path.endsWith(".jpg")
+                || path.endsWith(".css")
+                || path.endsWith(".js")
                 || appSecret.isBlank()) {
             filterChain.doFilter(request, response);
             return;
