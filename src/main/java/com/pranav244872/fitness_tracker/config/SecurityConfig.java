@@ -62,7 +62,7 @@ public class SecurityConfig {
         adminAuthProvider.setPasswordEncoder(NoOpPasswordEncoder.getInstance());
 
         http
-            .securityMatcher("/api/admin/**", "/api/music/*/stream")
+            .securityMatcher("/api/admin/**")
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
             .httpBasic(basic -> {})
@@ -81,6 +81,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/api/auth/register", "/api/auth/login", "/api/health").permitAll()
                     .requestMatchers("/admin/**").permitAll()
+                    .requestMatchers("/api/music/*/stream").permitAll()
                     .requestMatchers("/api/music/**").authenticated()
                     .requestMatchers("/favicon.ico", "/**.ico", "/**.png", "/**.jpg", "/**.css", "/**.js", "/**.svg").permitAll()
                     .anyRequest().authenticated()
