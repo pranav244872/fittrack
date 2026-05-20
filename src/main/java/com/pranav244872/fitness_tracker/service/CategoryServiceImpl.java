@@ -48,6 +48,17 @@ public class CategoryServiceImpl implements CategoryService {
 	}
 
 	@Override
+	public CategoryResponse updateCategory(Long id, Category categoryDetails) {
+		Category category = getCategoryByIdEntity(id);
+		if (categoryDetails.getName() == null || categoryDetails.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Category Name cannot be empty");
+        }
+		category.setName(categoryDetails.getName());
+		Category updated = categoryRepository.save(category);
+		return toResponse(updated);
+	}
+
+	@Override
 	public void deleteCategory(Long id) {
         Category category = getCategoryByIdEntity(id);
         categoryRepository.delete(category);

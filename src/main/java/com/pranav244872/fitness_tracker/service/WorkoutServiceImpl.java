@@ -55,6 +55,26 @@ public class WorkoutServiceImpl implements WorkoutService {
     }
 
     @Override
+    public WorkoutResponse updateWorkout(Long id, Workout workoutDetails) {
+        Workout workout = getWorkoutEntityById(id);
+        
+        if (workoutDetails.getName() == null || workoutDetails.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Workout name cannot be empty");
+        }
+        if (workoutDetails.getTargetSets() <= 0 || workoutDetails.getTargetReps() <= 0) {
+            throw new IllegalArgumentException("Sets and Reps must be greater than zero");
+        }
+
+        workout.setName(workoutDetails.getName());
+        workout.setTargetSets(workoutDetails.getTargetSets());
+        workout.setTargetReps(workoutDetails.getTargetReps());
+        workout.setRestBetweenSetsSeconds(workoutDetails.getRestBetweenSetsSeconds());
+
+        Workout updated = workoutRepository.save(workout);
+        return toResponse(updated);
+    }
+
+    @Override
     public void deleteWorkout(Long id) {
         Workout workout = getWorkoutEntityById(id);
         workoutRepository.delete(workout);
