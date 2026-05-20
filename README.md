@@ -1,166 +1,193 @@
-# FitTrack
+# FitTrack API
 
-A secure, containerized fitness tracking REST API built with Spring Boot 3, PostgreSQL, and JWT authentication.
+A production-grade fitness tracking REST API with real-time meditation music streaming, an admin dashboard, and multi-layer security. Built with Spring Boot 3, PostgreSQL, and JWT authentication. Deployed via Docker Compose.
 
 ## Features
 
-- **User Authentication** - Register and login with JWT token-based auth
-- **Workout Categories** - Create and manage workout categories (e.g., Push Day, Leg Day)
-- **Workout Templates** - Add exercises with target sets, reps, and rest periods
-- **Workout Logging** - Log completed workout sessions linked to categories
-- **Meditation Tracking** - Log and retrieve meditation session history
-- **Multi-tenant Security** - All data scoped to the authenticated user via JWT
+### Core
+- **User Authentication** — Register/login with JWT tokens (24h expiry)
+- **Workout Categories** — Create and manage workout groups (e.g., Push Day, Leg Day)
+- **Workout Templates** — Define exercises with target sets, reps, and rest periods
+- **Workout Logging** — Log completed sessions with duration, linked to categories
+- **Meditation Tracking** — Log meditation sessions with optional music track reference
+- **Monthly Pagination** — Fetch logs by `?year=YYYY&month=M` for efficient calendar views
+
+### Meditation Music
+- **Track Management** — Upload, list, and delete MP3 tracks via admin API
+- **Streaming** — `GET /api/music/{id}/stream` serves audio with proper MIME headers
+- **Download** — `GET /api/music/{id}/download` for offline caching in the mobile app
+- **Auto-Seeding** — 4 initial tracks are seeded on first startup if present in the music directory
+
+### Security
+- **JWT Authentication** — Stateless token-based auth on all `/api/**` endpoints
+- **API Secret Header** — Every request must include `X-App-Secret` or receive `403 Forbidden`
+- **Rate Limiting** — 120 requests/minute per IP address, returns `429` when exceeded
+- **Banned Email Registry** — Block specific emails from registering
+- **Multi-tenant Isolation** — All data scoped to the authenticated user
+
+### Admin Dashboard
+- **Browser-based UI** at `/admin/` — dark-themed, single-page HTML/JS dashboard
+- **HTTP Basic Auth** — separate from JWT, credentials in `.env`
+- **User Management** — List all users, delete accounts (cascades all data), ban emails
+- **System Health** — Disk space, JVM memory, database status, music storage metrics
+- **Global Analytics** — DAU, workouts/meditations today & this week, most popular track
+- **Music Management** — Upload new MP3s, list tracks, delete tracks
+- **Live Log Viewer** — In-memory logback appender streams last 1000 log lines with auto-refresh
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
 | Framework | Spring Boot 3.5 (Java 21) |
-| Security | Spring Security + JWT (jjwt) |
+| Security | Spring Security + JWT (jjwt 0.11.5) |
 | Database | PostgreSQL 16 |
 | ORM | Hibernate / Spring Data JPA |
 | Build | Maven |
 | Containerization | Docker + Docker Compose |
+| Logging | Logback with in-memory appender |
 
 ## Quick Start
 
 ### Prerequisites
-
 - Docker & Docker Compose
-- Java 21+ (optional, for local development without Docker)
+- Java 21+ (only for local development without Docker)
 
 ### Run with Docker
 
 ```bash
-# Clone the repository
 git clone https://github.com/pranav244872/fittrack.git
 cd fittrack
 
-# Create environment file
+# Create environment file from template
 cp .env.example .env
+# Edit .env with your credentials
 
-# Start the application
+# Start everything
 docker compose up --build -d
 ```
 
-The API will be available at `http://localhost:8080`.
+The API will be available at `http://localhost:8080`.  
+The admin dashboard will be at `http://localhost:8080/admin/`.
 
 ### Local Development
 
 ```bash
-# Ensure PostgreSQL is running, then:
-mvn spring-boot:run
+# Ensure PostgreSQL is running locally, then:
+export JWT_SECRET=your-base64-secret
+export APP_SECRET=your-app-secret
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD=yourpassword
+./mvnw spring-boot:run
 ```
 
-## API Endpoints
+## API Reference
 
-### Authentication
+### Public Endpoints (no auth required)
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| `POST` | `/api/auth/register` | Public | Register a new user |
-| `POST` | `/api/auth/login` | Public | Login and get JWT token |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/auth/register` | Register (body: `username`, `email`, `password`) |
+| `POST` | `/api/auth/login` | Login (body: `username`, `password`) → returns JWT |
+| `GET` | `/api/health` | Health check |
 
-### Categories
+### Authenticated Endpoints (JWT + X-App-Secret)
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| `POST` | `/api/categories` | Authenticated | Create a workout category |
-| `GET` | `/api/categories` | Authenticated | List all categories |
-| `GET` | `/api/categories/{id}` | Authenticated | Get category by ID |
-| `DELETE` | `/api/categories/{id}` | Authenticated | Delete a category |
+#### User Profile
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/auth/me` | Get current user profile (username, email, createdAt) |
 
-### Workouts
+#### Categories & Workouts
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/categories` | Create a workout category |
+| `GET` | `/api/categories` | List all categories with exercises |
+| `GET` | `/api/categories/{id}` | Get category by ID |
+| `DELETE` | `/api/categories/{id}` | Delete a category |
+| `POST` | `/api/categories/{id}/workouts` | Add exercise to category |
+| `GET` | `/api/categories/{id}/workouts` | List exercises in category |
+| `DELETE` | `/api/workouts/{id}` | Delete an exercise |
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| `POST` | `/api/categories/{categoryId}/workouts` | Authenticated | Add exercise to category |
-| `GET` | `/api/categories/{categoryId}/workouts` | Authenticated | List exercises in category |
-| `GET` | `/api/workouts/{id}` | Authenticated | Get exercise by ID |
-| `DELETE` | `/api/workouts/{id}` | Authenticated | Delete an exercise |
+#### Activity Logs
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/logs/workouts` | Log a workout (body: `categoryId`, `durationMinutes`) |
+| `GET` | `/api/logs/workouts` | Get all workout logs |
+| `GET` | `/api/logs/workouts?year=2026&month=5` | Get logs for a specific month |
+| `POST` | `/api/logs/meditation` | Log meditation (body: `durationMinutes`, `trackId?`) |
+| `GET` | `/api/logs/meditation` | Get all meditation logs |
+| `GET` | `/api/logs/meditation?year=2026&month=5` | Get logs for a specific month |
 
-### Activity Logs
+#### Music
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/music` | List all available tracks |
+| `GET` | `/api/music/{id}/stream` | Stream MP3 audio |
+| `GET` | `/api/music/{id}/download` | Download MP3 file |
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| `POST` | `/api/logs/workouts` | Authenticated | Log a completed workout |
-| `GET` | `/api/logs/workouts` | Authenticated | Get all workout logs |
-| `POST` | `/api/logs/meditation` | Authenticated | Log a meditation session |
-| `GET` | `/api/logs/meditation` | Authenticated | Get all meditation logs |
+### Admin Endpoints (HTTP Basic Auth)
 
-## Usage Examples
-
-### 1. Register & Login
-
-```bash
-# Register
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username": "john", "password": "securepass123"}'
-
-# Login (save the token)
-TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "john", "password": "securepass123"}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
-```
-
-### 2. Create a Category & Add Exercises
-
-```bash
-# Create category
-curl -X POST http://localhost:8080/api/categories \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Push Day"}'
-
-# Add exercise
-curl -X POST http://localhost:8080/api/categories/1/workouts \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Bench Press", "targetSets": 3, "targetReps": 10, "restBetweenSetsSeconds": 90}'
-```
-
-### 3. Log Activity
-
-```bash
-# Log meditation
-curl -X POST http://localhost:8080/api/logs/meditation \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"durationMinutes": 15}'
-
-# Log workout
-curl -X POST http://localhost:8080/api/logs/workouts \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"categoryId": 1, "durationMinutes": 45}'
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/admin/users` | List all users |
+| `GET` | `/api/admin/users/count` | Total user count |
+| `DELETE` | `/api/admin/users/{id}` | Delete user + all their data |
+| `GET` | `/api/admin/banned-emails` | List banned emails |
+| `POST` | `/api/admin/banned-emails` | Ban an email (body: `email`, `reason?`) |
+| `DELETE` | `/api/admin/banned-emails/{id}` | Unban an email |
+| `GET` | `/api/admin/health` | System health metrics |
+| `GET` | `/api/admin/analytics` | Global analytics |
+| `GET` | `/api/admin/music` | List all tracks |
+| `POST` | `/api/admin/music` | Upload track (multipart: `file`, `name`) |
+| `DELETE` | `/api/admin/music/{id}` | Delete a track |
+| `GET` | `/api/admin/logs?lines=200` | Get recent application logs |
 
 ## Project Structure
 
 ```
 src/main/java/com/pranav244872/fitness_tracker/
-├── config/          # Security & application configuration
-├── controller/      # REST API endpoints
-├── dto/             # Request/Response data transfer objects
-├── exception/       # Custom exception classes
-├── model/           # JPA entity classes
-├── repository/      # Spring Data JPA repositories
-├── security/        # JWT filter & token service
-└── service/         # Business logic layer
+├── config/              # SecurityConfig, ApplicationConfig, InMemoryLogAppender, MusicDataSeeder
+├── controller/          # AuthController, AdminController, MusicController, TrackingLogController, etc.
+├── dto/                 # Request/Response DTOs (AuthDTOs, WorkoutLog*, MeditationLog*, etc.)
+├── exception/           # GlobalExceptionHandler, ResourceNotFoundException
+├── filter/              # ApiSecretFilter, RateLimitFilter, RequestLoggingFilter
+├── model/               # JPA entities (User, Category, Workout, WorkoutLog, MeditationLog, BannedEmail, MeditationTrack)
+├── repository/          # Spring Data JPA repositories with custom queries
+├── security/            # JwtAuthenticationFilter, JwtService
+└── service/             # Business logic (AuthenticationService, WorkoutLogService, etc.)
+
+src/main/resources/
+├── application.yaml     # Spring Boot configuration
+├── logback-spring.xml   # Logging config (console + in-memory appender)
+└── static/admin/        # Admin dashboard (index.html, style.css)
 ```
 
 ## Architecture
 
-- **DTO Pattern** - All API responses use dedicated response DTOs. Entity classes are never exposed directly, preventing accidental leakage of sensitive data (password hashes, internal fields).
-- **JWT Authentication** - Stateless token-based auth. Tokens are validated on every request via a custom `OncePerRequestFilter`.
-- **Security Filter Chain** - `/api/auth/**` is public; all other endpoints require a valid `Authorization: Bearer <token>` header.
-- **Docker Compose** - PostgreSQL and the Spring Boot app run in separate containers with health-check-based startup ordering.
+```
+Mobile App ──► [X-App-Secret Filter] ──► [Rate Limiter] ──► [JWT Filter] ──► Controllers
+                                                                                  │
+Browser    ──► [HTTP Basic Auth] ──────────────────────────► Admin Controller ─────┤
+                                                                                  │
+                                                                            PostgreSQL
+                                                                            Music Files (volume)
+```
 
-## License
+- **Dual Security Chains** — `@Order(1)` for admin (HTTP Basic), `@Order(2)` for API (JWT)
+- **DTO Pattern** — Entities never exposed directly, preventing password hash leakage
+- **Docker Volumes** — PostgreSQL data in `postgres_data/`, music files in `music_data/`
+- **Stateless** — No server-side sessions; JWT validated on every request
 
-MIT
-# webhook test Tue May 19 11:28:27 PM IST 2026
-# webhook test 2 Tue May 19 11:29:28 PM IST 2026
-# webhook test 3 Tue May 19 11:37:56 PM IST 2026
+## Environment Variables
+
+See `.env.example` for all required variables. Key ones:
+
+| Variable | Description |
+|----------|-------------|
+| `DB_USER` | PostgreSQL username |
+| `DB_PASSWORD` | PostgreSQL password |
+| `DB_NAME` | Database name |
+| `JWT_SECRET` | Base64-encoded HMAC-SHA256 key for JWT signing |
+| `APP_SECRET` | Secret header value that the mobile app must send |
+| `ADMIN_USERNAME` | HTTP Basic auth username for admin dashboard |
+| `ADMIN_PASSWORD` | HTTP Basic auth password for admin dashboard |
