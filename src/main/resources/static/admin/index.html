@@ -86,9 +86,16 @@
             <div class="panel-body">
                 <table><thead><tr><th>Name</th><th>Size</th><th>Actions</th></tr></thead>
                 <tbody id="music-table"><tr><td colspan="3" class="loading">Loading...</td></tr></tbody></table>
+                <div id="audio-player-container"></div>
                 <div class="upload-form">
                     <input type="text" id="track-name-input" placeholder="Track display name" style="max-width:200px">
-                    <input type="file" id="track-file-input" accept=".mp3">
+                    <div class="file-input-wrapper">
+                        <span class="file-input-btn" id="file-input-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span id="file-input-text">Choose MP3</span>
+                        </span>
+                        <input type="file" id="track-file-input" accept=".mp3">
+                    </div>
                     <button class="btn btn-success" onclick="uploadTrack()">Upload Track</button>
                 </div>
             </div>
@@ -279,21 +286,66 @@ async function loadAnalytics() {
 }
 
 // ─── Music ──────────────────────────
+let currentTrackId = null;
+let currentTrackName = '';
+
 async function loadMusic() {
     const data = await apiFetch('/music');
     if (!data) return;
     const tbody = document.getElementById('music-table');
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No tracks uploaded</td></tr>';
+        document.getElementById('audio-player-container').innerHTML = '';
         return;
     }
     tbody.innerHTML = data.map(t => `
         <tr>
             <td><strong>🎵 ${esc(t.displayName)}</strong></td>
             <td style="font-size:12px;color:var(--text-muted)">${(t.fileSizeBytes / (1024*1024)).toFixed(1)} MB</td>
-            <td><button class="btn btn-danger" onclick="deleteTrack(${t.id}, '${esc(t.displayName)}')">Delete</button></td>
+            <td>
+                <button class="btn-play" onclick="playTrack(${t.id}, '${esc(t.displayName)}')" title="Preview">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="btn btn-danger" onclick="deleteTrack(${t.id}, '${esc(t.displayName)}')">Delete</button>
+            </td>
         </tr>
     `).join('');
+}
+
+function playTrack(id, name) {
+    currentTrackId = id;
+    currentTrackName = name;
+    const auth = getAuthHeader();
+    const container = document.getElementById('audio-player-container');
+    container.innerHTML = `
+        <div class="audio-player-row">
+            <span class="track-info"><span class="track-name">🎵 ${esc(name)}</span></span>
+            <audio id="audio-player" controls autoplay>
+                <source src="/api/music/${id}/stream" type="audio/mpeg">
+            </audio>
+        </div>
+    `;
+    const audio = document.getElementById('audio-player');
+    if (auth) {
+        audio.src = '/api/music/' + id + '/stream';
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', '/api/music/' + id + '/stream', true);
+        xhr.setRequestHeader('Authorization', auth);
+        xhr.responseType = 'blob';
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                const blob = new Blob([xhr.response], { type: 'audio/mpeg' });
+                audio.src = URL.createObjectURL(blob);
+                audio.play();
+            } else {
+                container.innerHTML = '<div style="color:var(--danger);padding:10px;font-size:13px">Failed to load track. Please refresh and re-enter credentials.</div>';
+            }
+        };
+        xhr.onerror = function() {
+            container.innerHTML = '<div style="color:var(--danger);padding:10px;font-size:13px">Network error loading track.</div>';
+        };
+        xhr.send();
+    }
 }
 
 async function uploadTrack() {
@@ -371,6 +423,19 @@ window.addEventListener('DOMContentLoaded', () => {
     loadAnalytics();
     loadMusic();
     loadLogs();
+
+    const fileInput = document.getElementById('track-file-input');
+    const fileLabel = document.getElementById('file-input-label');
+    const fileText = document.getElementById('file-input-text');
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            fileText.textContent = fileInput.files[0].name;
+            fileLabel.classList.add('has-file');
+        } else {
+            fileText.textContent = 'Choose MP3';
+            fileLabel.classList.remove('has-file');
+        }
+    });
 });
 </script>
 </body>

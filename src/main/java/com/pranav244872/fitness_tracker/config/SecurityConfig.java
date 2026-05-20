@@ -62,7 +62,7 @@ public class SecurityConfig {
         adminAuthProvider.setPasswordEncoder(NoOpPasswordEncoder.getInstance());
 
         http
-            .securityMatcher("/api/admin/**")
+            .securityMatcher("/api/admin/**", "/api/music/*/stream")
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
             .httpBasic(basic -> {})
