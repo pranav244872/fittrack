@@ -30,7 +30,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             // set the routing rules
             .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers("/api/auth/**", "/api/health").permitAll()
                     .anyRequest().authenticated()
             )
             // tell spring boot not to use traditional session cookies

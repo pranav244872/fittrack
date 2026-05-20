@@ -26,7 +26,8 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String username;
 
-    @Column(nullable = false, unique = true)
+    // Added columnDefinition with default to prevent schema update failures on existing rows
+    @Column(nullable = false, unique = true, columnDefinition = "varchar(255) default 'temp@example.com'")
     private String email;
 
     @Column(nullable = false)
