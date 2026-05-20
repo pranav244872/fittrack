@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import com.pranav244872.fitness_tracker.filter.ApiSecretFilter;
 import com.pranav244872.fitness_tracker.filter.RateLimitFilter;
@@ -81,6 +82,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/auth/register", "/api/auth/login", "/api/health").permitAll()
                     .requestMatchers("/admin/**").permitAll()
                     .requestMatchers("/api/music/**").authenticated()
+                    .requestMatchers("/favicon.ico", "/**.ico", "/**.png", "/**.jpg", "/**.css", "/**.js").permitAll()
                     .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
