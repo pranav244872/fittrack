@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FitTrack — Admin Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -111,18 +112,34 @@
 <script>
 const API = '/api/admin';
 let autoRefreshInterval = null;
+let authHeader = null;
 
-// Basic auth header (sent automatically by browser after first prompt)
+function getAuthHeader() {
+    if (authHeader) return authHeader;
+    const creds = prompt('Enter admin credentials (username:password):');
+    if (!creds) return null;
+    authHeader = 'Basic ' + btoa(creds);
+    return authHeader;
+}
+
 function headers() {
-    return { 'Content-Type': 'application/json' };
+    const h = { 'Content-Type': 'application/json' };
+    const auth = getAuthHeader();
+    if (auth) h['Authorization'] = auth;
+    return h;
 }
 
 async function apiFetch(path, opts = {}) {
-    const res = await fetch(API + path, opts);
+    const res = await fetch(API + path, {
+        ...opts,
+        headers: { ...headers(), ...(opts.headers || {}) }
+    });
     if (res.status === 401) {
-        alert('Authentication required. Please refresh and enter admin credentials.');
+        authHeader = null;
+        alert('Authentication failed. Please refresh and try again.');
         return null;
     }
+    if (!res.ok) return null;
     return res.json();
 }
 
