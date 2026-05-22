@@ -28,6 +28,7 @@ public class Category {
     private String name;
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval=true)
+    @jakarta.persistence.OrderBy("id ASC")
     private List<Workout> workouts;
 
 	@ManyToOne(fetch = FetchType.LAZY)

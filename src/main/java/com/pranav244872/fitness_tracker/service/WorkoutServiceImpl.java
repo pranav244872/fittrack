@@ -42,7 +42,7 @@ public class WorkoutServiceImpl implements WorkoutService {
         if (!categoryRepository.existsById(categoryId)) {
             throw new ResourceNotFoundException("Category not found with id: " + categoryId);
         }
-        return workoutRepository.findByCategoryId(categoryId).stream()
+        return workoutRepository.findByCategoryIdOrderByIdAsc(categoryId).stream()
             .map(this::toResponse)
             .toList();
     }
