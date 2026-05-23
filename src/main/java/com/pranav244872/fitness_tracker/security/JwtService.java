@@ -36,7 +36,7 @@ public class JwtService {
         }
     }
 
-    // generate a token for a user (valid for 24 hours)
+    // generate a token for a user (valid for 7 days)
     public String generateToken(UserDetails userDetails) {
         return generateToken(new HashMap<>(), userDetails);
     }
@@ -47,7 +47,7 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24 hours
+                .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)) // 7 days
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
